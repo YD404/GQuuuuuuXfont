@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイトル風画像ジェネレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Reggae+One&family=Noto+Sans+JP:wght@700;900&family=DotGothic16&family=Yuji+Syuku&family=Train+One&family=RocknRoll+One&display=swap" rel="stylesheet">
+    <style>
+        /* 基本的なページスタイル */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Tailwind gray-900 */
+            color: #F3F4F6; /* Tailwind gray-100 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* カスタムフォントの読み込み */
+        @font-face {
+            font-family: 'Zero Gothic'; /* フォント名を定義 */
+            src: url('ZeroGothic.otf') format('opentype'); /* フォントファイルのパスを指定 */
+        }
+
+        /* タイトル表示コンテナ */
+        .title-container {
+            background-color: #000000; /* 黒背景 */
+            padding: 40px 20px;
+            border-radius: 12px;
+            text-align: center;
+            width: 100%;
+            max-width: 800px; /* 最大幅 */
+            min-height: 300px; /* 表示エリアの最小高さ */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative; /* スプラッターの位置基準 */
+            overflow: hidden; /* スプラッターがはみ出ないように */
+            border: 1px solid #374151; /* Tailwind gray-700: 微妙な境界線 */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3); /* 影を追加 */
+        }
+
+        /* 生成されるタイトルテキストのスタイル */
+        .generated-title {
+            font-family: 'Reggae One', cursive; /* デフォルトフォント */
+            font-size: 5rem; /* 初期フォントサイズ */
+            color: #FFFFFF; /* 白文字 */
+            text-align: center;
+            line-height: 1.2;
+            text-shadow: /* テキストに影や滲みを追加 */
+                0 0 2px #fff,
+                0 0 5px #fff,
+                1px 1px 0px #ccc,
+                -1px -1px 0px #ccc;
+            position: relative; /* スプラッターより手前に表示 */
+            z-index: 1;
+            word-break: break-all; /* 長いテキストでも改行 */
+            transition: font-size 0.2s ease-out, font-family 0.2s ease-out, transform 0.2s ease-out; /* transformもトランジション対象に */
+            transform-origin: 0 50%; /* 斜体変形の基準点を調整 */
+        }
+
+        /* スプラッターエフェクトのスタイル */
+        .splatter {
+            position: absolute;
+            background-color: #FFFFFF;
+            border-radius: 50%;
+            opacity: 0.7;
+            pointer-events: none; /* クリックイベントを透過 */
+        }
+
+        /* 入力エリアとコントロールのスタイル */
+        .input-area {
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px; /* コントロール間の間隔 */
+            background-color: #1F2937; /* Tailwind gray-800 */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        #text-input {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #4B5563; /* Tailwind gray-600 */
+            background-color: #374151; /* Tailwind gray-700 */
+            color: #F3F4F6; /* Tailwind gray-100 */
+            font-size: 1.1rem;
+            box-sizing: border-box;
+        }
+        #text-input:focus {
+            outline: none;
+            border-color: #3B82F6; /* Tailwind blue-500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column; /* スマホ表示を考慮して縦並びにも対応しやすく */
+            gap: 8px;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .controls label {
+            font-size: 0.9rem;
+            min-width: 100px; /* ラベルの幅を揃える */
+        }
+        .controls input[type="range"],
+        .controls select {
+            flex-grow: 1; /* 入力要素がスペースを埋めるように */
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #4B5563; /* Tailwind gray-600 */
+            background-color: #374151; /* Tailwind gray-700 */
+            color: #F3F4F6;
+        }
+        #font-size-value, #skew-angle-value {
+            min-width: 50px; /* 値表示の幅 */
+            text-align: right;
+        }
+
+        /* クレジット表記のスタイル */
+        .credit-notation {
+            font-size: 0.75rem; /* 12px */
+            color: #9CA3AF; /* Tailwind gray-400 */
+            margin-top: 20px;
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+        }
+
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .generated-title {
+                font-size: 3.5rem; /* 中間画面サイズでのフォントサイズ */
+            }
+            .title-container {
+                padding: 30px 15px;
+                min-height: 250px;
+            }
+             .input-area {
+                padding: 15px;
+            }
+            .credit-notation {
+                font-size: 0.7rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .generated-title {
+                font-size: 2.2rem; /* 小さい画面サイズでのフォントサイズ */
+            }
+            .title-container {
+                padding: 20px 10px;
+                min-height: 200px;
+            }
+            #text-input {
+                font-size: 1rem;
+            }
+            .controls label {
+                min-width: 80px;
+                font-size: 0.85rem;
+            }
+            .control-group {
+                flex-direction: column; /* 小画面ではコントロールを縦積みに */
+                align-items: stretch;
+            }
+            .controls input[type="range"],
+            .controls select {
+                width: 100%;
+            }
+            #font-size-value, #skew-angle-value {
+                text-align: left;
+                margin-top: 4px;
+            }
+            .credit-notation {
+                font-size: 0.65rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-area">
+        <input type="text" id="text-input" placeholder="ここにテキストを入力" value="白いテキスト">
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="font-size-slider">フォントサイズ:</label>
+                <input type="range" id="font-size-slider" min="1" max="12" value="5" step="0.1" class="w-full">
+                <span id="font-size-value" class="ml-2 text-sm">5rem</span>
+            </div>
+            <div class="control-group">
+                <label for="font-select">フォント:</label>
+                <select id="font-select">
+                    <option value="'Reggae One', cursive">レゲエワン</option>
+                    <option value="'Noto Sans JP', sans-serif">Noto Sans JP (太字)</option>
+                    <option value="'DotGothic16', sans-serif">DotGothic16</option>
+                    <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                    <option value="'Train One', cursive">Train One</option>
+                    <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
+                    <option value="'Zero Gothic', sans-serif">零ゴシック (ローカル)</option>
+                </select>
+            </div>
+            <div class="control-group"> {/* 斜体角度調整スライダーを追加 */}
+                <label for="skew-angle-slider">斜体角度:</label>
+                <input type="range" id="skew-angle-slider" min="-30" max="30" value="0" step="1" class="w-full">
+                <span id="skew-angle-value" class="ml-2 text-sm">0deg</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="title-container" id="title-container">
+        <div id="generated-title" class="generated-title">白いテキスト</div>
+    </div>
+
+    <div class="credit-notation">
+        零ゴシック (派生元: 源ノ角ゴシック) by フロップデザイン (SIL Open Font License 1.1)
+    </div>
+
+    <script>
+        const textInput = document.getElementById('text-input');
+        const generatedTitle = document.getElementById('generated-title');
+        const titleContainer = document.getElementById('title-container');
+        const fontSizeSlider = document.getElementById('font-size-slider');
+        const fontSizeValueDisplay = document.getElementById('font-size-value');
+        const fontSelect = document.getElementById('font-select');
+        const skewAngleSlider = document.getElementById('skew-angle-slider'); // 斜体角度スライダー
+        const skewAngleValueDisplay = document.getElementById('skew-angle-value'); // 斜体角度表示
+
+        // スプラッターを生成・再配置する関数
+        function generateSplatters(count = 30) {
+            // 既存のスプラッターを削除
+            const existingSplatters = titleContainer.querySelectorAll('.splatter');
+            existingSplatters.forEach(splatter => splatter.remove());
+
+            // 新しいスプラッターを生成
+            const margin = 10; // コンテナの端から最低限離す距離(%)
+            for (let i = 0; i < count; i++) {
+                const splatter = document.createElement('div');
+                splatter.classList.add('splatter');
+                const size = Math.random() * 3 + 1; 
+                splatter.style.width = `${size}px`;
+                splatter.style.height = `${size}px`;
+                
+                const randomLeft = Math.random() * (100 - 2 * margin) + margin;
+                const randomTop = Math.random() * (100 - 2 * margin) + margin;
+                splatter.style.left = `${randomLeft}%`;
+                splatter.style.top = `${randomTop}%`;
+
+                splatter.style.opacity = Math.random() * 0.3 + 0.2; 
+                titleContainer.appendChild(splatter);
+            }
+        }
+
+        // タイトル表示を更新する関数
+        function updateTitleDisplay() {
+            const text = textInput.value;
+            generatedTitle.textContent = text || "テキストを入力してください"; 
+
+            // フォントサイズ設定
+            const currentFontSize = parseFloat(fontSizeSlider.value);
+            let adjustedFontSize = currentFontSize;
+            if (text.length > 8 && text.length <= 12) {
+                adjustedFontSize = currentFontSize * 0.85;
+            } else if (text.length > 12 && text.length <= 18) {
+                adjustedFontSize = currentFontSize * 0.7;
+            } else if (text.length > 18) {
+                adjustedFontSize = currentFontSize * 0.55;
+            }
+            generatedTitle.style.fontSize = `${adjustedFontSize}rem`;
+            fontSizeValueDisplay.textContent = `${adjustedFontSize.toFixed(1)}rem`; 
+
+            // フォントファミリー設定
+            const selectedFont = fontSelect.value;
+            generatedTitle.style.fontFamily = selectedFont;
+
+            // 斜体角度設定
+            const skewAngle = parseInt(skewAngleSlider.value);
+            generatedTitle.style.transform = `skewX(${skewAngle}deg)`;
+            skewAngleValueDisplay.textContent = `${skewAngle}deg`;
+
+
+            // フォントに応じたテキストシャドウ調整
+            if (selectedFont.includes('Noto Sans JP')) {
+                 generatedTitle.style.fontWeight = '900'; 
+                 generatedTitle.style.textShadow = '1px 1px 0px #bbb, -1px -1px 0px #bbb, 0 0 2px #fff';
+            } else if (selectedFont.includes('Reggae One')) {
+                generatedTitle.style.fontWeight = 'normal';
+                generatedTitle.style.textShadow = '0 0 2px #fff, 0 0 4px #fff, 1px 1px 0px #ccc, -1px -1px 0px #ccc';
+            } else if (selectedFont.includes('DotGothic16')) {
+                generatedTitle.style.fontWeight = 'normal';
+                generatedTitle.style.textShadow = '1px 1px 0px #ddd'; 
+            } else if (selectedFont.includes('Yuji Syuku') || selectedFont.includes('Train One')) {
+                 generatedTitle.style.fontWeight = 'normal';
+                 generatedTitle.style.textShadow = '0 0 1px #fff, 1px 1px 1px #aaa';
+            } else if (selectedFont.includes('Zero Gothic')) { 
+                 generatedTitle.style.fontWeight = 'normal'; 
+                 generatedTitle.style.textShadow = '1px 1px 0px #ccc, -1px -1px 0px #ccc, 0 0 1px #fff'; 
+            }
+            else { 
+                 generatedTitle.style.fontWeight = 'normal';
+                 generatedTitle.style.textShadow = '0 0 2px #fff, 1px 1px 0px #ccc';
+            }
+        }
+
+        // イベントリスナーの設定
+        textInput.addEventListener('input', updateTitleDisplay);
+        fontSizeSlider.addEventListener('input', updateTitleDisplay);
+        fontSelect.addEventListener('change', () => {
+            updateTitleDisplay();
+            generateSplatters(Math.floor(Math.random() * 15) + 20); 
+        });
+        skewAngleSlider.addEventListener('input', updateTitleDisplay); // 斜体角度スライダーのイベントリスナー
+
+        // 初期表示処理
+        updateTitleDisplay(); 
+        generateSplatters(Math.floor(Math.random() * 15) + 25);
+
+        // ウィンドウリサイズ時にもスプラッターを再配置（見た目のため）
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                 generateSplatters(Math.floor(Math.random() * 15) + 20);
+                 updateTitleDisplay(); 
+            }, 200);
+        });
+
+    </script>
+</body>
+</html>
